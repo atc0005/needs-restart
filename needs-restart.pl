@@ -42,9 +42,9 @@ foreach $proc (@procs) {
     my $service = $services_cache{$proc->{pid}};
 
     unless (exists $pkgs_cache{$proc->{file}}) {
-        my $pkg = `rpm -qf $proc->{file}`;
+        my $pkg = `rpm -qf $proc->{file} 2>&-`;
         chomp $pkg;
-        $pkgs_cache{$proc->{file}} = $pkg;
+        $pkgs_cache{$proc->{file}} = $pkg ? $pkg : "";
     }
     my $pkg = $pkgs_cache{$proc->{file}};
 
