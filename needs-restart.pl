@@ -10,19 +10,34 @@
 use strict;
 
 # Parse lsof output.
-my @lines = qx{ lsof };
+my @lines = qx{ lsof -F cpLfn };
 my @procs = ();
+my $pid;
+my $comm;
+my $user;
+my $fd;
+my $file;
 foreach (@lines) {
     chomp;
-    my @fields = split;
-    if ($fields[4] eq "DEL" && $fields[8] =~ /\.so/) {
-        my $comm = $fields[0];
-        my $pid = $fields[1];
-        my $user = $fields[3];
-        my $file = $fields[8];
+    if (/^p(\d+)/) {
+        $pid = $1;
+        next;
+    } elsif (/^c(.*)/) {
+        $comm = $1;
+        next;
+    } elsif (/^L(.*)/) {
+        $user = $1;
+        next;
+    } elsif (/^f(.*)/) {
+        $fd = $1;
+        next;
+    } elsif (/^n(.*)/) {
+        $file = $1;
         $file =~ s/;[a-f0-9]{8}//;
-        push @procs,
-        { comm => $comm, pid => $pid, user => $user, file => $file };
+        if ($fd eq "DEL" && $file =~ /\.so/) {
+            push @procs,
+            { comm => $comm, pid => $pid, user => $user, file => $file };
+        }
     }
 }
 
@@ -42,9 +57,9 @@ foreach $proc (@procs) {
     my $service = $services_cache{$proc->{pid}};
 
     unless (exists $pkgs_cache{$proc->{file}}) {
-        my $pkg = `rpm -qf $proc->{file}`;
+        my $pkg = `rpm -qf $proc->{file} 2>&-`;
         chomp $pkg;
-        $pkgs_cache{$proc->{file}} = $pkg;
+        $pkgs_cache{$proc->{file}} = $pkg ? $pkg : "";
     }
     my $pkg = $pkgs_cache{$proc->{file}};
 
