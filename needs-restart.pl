@@ -57,7 +57,17 @@ foreach $proc (@procs) {
     my $service = $services_cache{$proc->{pid}};
 
     unless (exists $pkgs_cache{$proc->{file}}) {
-        my $pkg = `rpm -qf $proc->{file} 2>&-`;
+        # Define at outer scope, set within inner if block scope
+        my $pkg = "";
+        if ( -e '/usr/bin/dpkg') {
+            $pkg = `dpkg -S $proc->{file} 2>&-`;
+        }
+        elsif (-e '/usr/bin/rpm') {
+            $pkg = `rpm -qf $proc->{file} 2>&-`;
+        }
+        else {
+            die("Failed to identify distribution specific packaging tool");
+        }
         chomp $pkg;
         $pkgs_cache{$proc->{file}} = $pkg ? $pkg : "";
     }
